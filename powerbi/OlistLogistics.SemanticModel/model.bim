@@ -1,0 +1,624 @@
+{
+  "name": "OlistLogistics",
+  "compatibilityLevel": 1601,
+  "model": {
+    "culture": "pt-BR",
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "sourceQueryCulture": "en-US",
+    "dataAccessOptions": {
+      "legacyRedirects": true,
+      "returnErrorValuesAsNull": false
+    },
+    "annotations": [
+      {
+        "name": "PBI_QueryOrder",
+        "value": "[\"DataFolder\",\"SourceMode\",\"PostgresServer\",\"PostgresDatabase\",\"fnOlistSource\",\"fact_orders\",\"seller_orders\",\"category_orders\",\"calendar\"]"
+      },
+      {
+        "name": "__PBI_TimeIntelligenceEnabled",
+        "value": "0"
+      }
+    ],
+    "expressions": [
+      {
+        "name": "DataFolder",
+        "kind": "m",
+        "expression": "\"C:\\olist-logistics\\reports\\generated\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]",
+        "description": "Pasta absoluta dos quatro CSVs gerados pelo pipeline."
+      },
+      {
+        "name": "SourceMode",
+        "kind": "m",
+        "expression": "\"CSV\" meta [IsParameterQuery=true, List={\"CSV\", \"PostgreSQL\"}, DefaultValue=\"CSV\", Type=\"Text\", IsParameterQueryRequired=true]",
+        "description": "CSV para abrir sem banco ou PostgreSQL para consultar as views."
+      },
+      {
+        "name": "PostgresServer",
+        "kind": "m",
+        "expression": "\"localhost:5433\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]"
+      },
+      {
+        "name": "PostgresDatabase",
+        "kind": "m",
+        "expression": "\"olist\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]"
+      },
+      {
+        "name": "fnOlistSource",
+        "kind": "m",
+        "expression": "(TableName as text) as table =>\nlet\n    Allowed = {\"fact_orders\", \"seller_orders\", \"category_orders\", \"calendar\"},\n    Checked = if List.Contains(Allowed, TableName) then TableName else error \"Mart inválido.\",\n    Raw =\n        if SourceMode = \"CSV\" then\n            Table.PromoteHeaders(\n                Csv.Document(File.Contents(DataFolder & \"/\" & Checked & \".csv\"),\n                    [Delimiter=\",\", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),\n                [PromoteAllScalars=true])\n        else if SourceMode = \"PostgreSQL\" then\n            PostgreSQL.Database(PostgresServer, PostgresDatabase,\n                [CreateNavigationProperties=false]){[Schema=\"olist_mart\", Item=Checked]}[Data]\n        else error \"SourceMode deve ser CSV ou PostgreSQL.\",\n    EmptyToNull =\n        if SourceMode = \"CSV\" then\n            Table.ReplaceValue(Raw, \"\", null, Replacer.ReplaceValue, Table.ColumnNames(Raw))\n        else Raw,\n    Types =\n        if Checked = \"calendar\" then {\n            {\"date\", type date}, {\"year\", Int64.Type}, {\"month\", Int64.Type}, {\"year_month\", type text}\n        } else {\n            {\"order_id\", type text}, {\"purchase_date\", type date}, {\"purchase_month\", type text},\n            {\"customer_state\", type text}, {\"delivery_eligible\", type logical},\n            {\"delivered_late\", type logical}, {\"delivery_days\", type number},\n            {\"review_score\", Int64.Type}, {\"product_total_cents\", Int64.Type},\n            {\"freight_total_cents\", Int64.Type}, {\"item_count\", Int64.Type}\n        },\n    Typed = Table.TransformColumnTypes(EmptyToNull, Types & (if Checked = \"fact_orders\" then {{\"order_status\", type text}, {\"payment_total_cents\", Int64.Type}, {\"delay_calendar_days\", Int64.Type}, {\"review_conflict\", type logical}} else if Checked = \"seller_orders\" then {{\"seller_id\", type text}, {\"seller_state\", type text}} else if Checked = \"category_orders\" then {{\"category\", type text}} else {}), \"en-US\")\nin Typed"
+      }
+    ],
+    "tables": [
+      {
+        "name": "fact_orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "dataType": "string",
+            "sourceColumn": "order_id",
+            "summarizeBy": "none",
+            "isHidden": true,
+            "isKey": true
+          },
+          {
+            "name": "purchase_date",
+            "dataType": "dateTime",
+            "sourceColumn": "purchase_date",
+            "summarizeBy": "none",
+            "formatString": "dd/MM/yyyy"
+          },
+          {
+            "name": "purchase_month",
+            "dataType": "string",
+            "sourceColumn": "purchase_month",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "customer_state",
+            "dataType": "string",
+            "sourceColumn": "customer_state",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivery_eligible",
+            "dataType": "boolean",
+            "sourceColumn": "delivery_eligible",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivered_late",
+            "dataType": "boolean",
+            "sourceColumn": "delivered_late",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivery_days",
+            "dataType": "double",
+            "sourceColumn": "delivery_days",
+            "summarizeBy": "none",
+            "formatString": "0.00"
+          },
+          {
+            "name": "review_score",
+            "dataType": "int64",
+            "sourceColumn": "review_score",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "product_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "product_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "freight_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "freight_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "item_count",
+            "dataType": "int64",
+            "sourceColumn": "item_count",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "order_status",
+            "dataType": "string",
+            "sourceColumn": "order_status",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "payment_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "payment_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "delay_calendar_days",
+            "dataType": "int64",
+            "sourceColumn": "delay_calendar_days",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "review_conflict",
+            "dataType": "boolean",
+            "sourceColumn": "review_conflict",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "delivery_group",
+            "dataType": "string",
+            "type": "calculated",
+            "expression": "IF ( NOT fact_orders[delivery_eligible], \"Não elegível\", IF ( fact_orders[delivered_late], \"Com atraso\", \"No prazo\" ) )",
+            "summarizeBy": "none"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_orders",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": "let\n    Source = fnOlistSource(\"fact_orders\")\nin\n    Source"
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "Pedidos",
+            "expression": "COUNTROWS ( fact_orders )",
+            "formatString": "#,0",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Entregas elegíveis",
+            "expression": "CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () ) )",
+            "formatString": "#,0",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Entregas atrasadas",
+            "expression": "CALCULATE (\n        [Entregas elegíveis],\n        KEEPFILTERS ( fact_orders[delivered_late] = TRUE () )\n    )",
+            "formatString": "#,0",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Taxa de atraso",
+            "expression": "DIVIDE ( [Entregas atrasadas], [Entregas elegíveis] )",
+            "formatString": "0.00%",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Taxa de atraso - mínimo 30",
+            "expression": "IF ( [Entregas elegíveis] >= 30, [Taxa de atraso], BLANK () )",
+            "formatString": "0.00%",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Tempo médio de entrega",
+            "expression": "CALCULATE (\n        AVERAGE ( fact_orders[delivery_days] ),\n        KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )\n    )",
+            "formatString": "0.00",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Mediana de entrega",
+            "expression": "CALCULATE (\n        MEDIAN ( fact_orders[delivery_days] ),\n        KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )\n    )",
+            "formatString": "0.00",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "P90 de entrega",
+            "expression": "CALCULATE (\n        PERCENTILE.INC ( fact_orders[delivery_days], 0.9 ),\n        KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )\n    )",
+            "formatString": "0.00",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Nota média elegível",
+            "expression": "CALCULATE (\n        AVERAGE ( fact_orders[review_score] ),\n        KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )\n    )",
+            "formatString": "0.00",
+            "displayFolder": "Entregas"
+          },
+          {
+            "name": "Valor dos produtos",
+            "expression": "DIVIDE ( SUM ( fact_orders[product_total_cents] ), 100 )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Valores"
+          },
+          {
+            "name": "Frete registrado",
+            "expression": "DIVIDE ( SUM ( fact_orders[freight_total_cents] ), 100 )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Valores"
+          },
+          {
+            "name": "Frete sobre produtos",
+            "expression": "DIVIDE ( [Frete registrado], [Valor dos produtos] )",
+            "formatString": "0.00%",
+            "displayFolder": "Valores"
+          },
+          {
+            "name": "Pedidos com categoria",
+            "expression": "DISTINCTCOUNT ( category_orders[order_id] )",
+            "formatString": "#,0",
+            "displayFolder": "Categorias"
+          },
+          {
+            "name": "Elegíveis da categoria",
+            "expression": "CALCULATE (\n        [Pedidos com categoria],\n        KEEPFILTERS ( category_orders[delivery_eligible] = TRUE () )\n    )",
+            "formatString": "#,0",
+            "displayFolder": "Categorias"
+          },
+          {
+            "name": "Atrasados da categoria",
+            "expression": "CALCULATE (\n        [Elegíveis da categoria],\n        KEEPFILTERS ( category_orders[delivered_late] = TRUE () )\n    )",
+            "formatString": "#,0",
+            "displayFolder": "Categorias"
+          },
+          {
+            "name": "Taxa de atraso da categoria",
+            "expression": "IF (\n        [Elegíveis da categoria] >= 30,\n        DIVIDE ( [Atrasados da categoria], [Elegíveis da categoria] ),\n        BLANK ()\n    )",
+            "formatString": "0.00%",
+            "displayFolder": "Categorias"
+          },
+          {
+            "name": "Pedidos com vendedor",
+            "expression": "DISTINCTCOUNT ( seller_orders[order_id] )",
+            "formatString": "#,0",
+            "displayFolder": "Vendedores"
+          },
+          {
+            "name": "Elegíveis do vendedor",
+            "expression": "CALCULATE (\n        [Pedidos com vendedor],\n        KEEPFILTERS ( seller_orders[delivery_eligible] = TRUE () )\n    )",
+            "formatString": "#,0",
+            "displayFolder": "Vendedores"
+          },
+          {
+            "name": "Atrasados do vendedor",
+            "expression": "CALCULATE (\n        [Elegíveis do vendedor],\n        KEEPFILTERS ( seller_orders[delivered_late] = TRUE () )\n    )",
+            "formatString": "#,0",
+            "displayFolder": "Vendedores"
+          },
+          {
+            "name": "Taxa de atraso do vendedor",
+            "expression": "IF (\n        [Elegíveis do vendedor] >= 30,\n        DIVIDE ( [Atrasados do vendedor], [Elegíveis do vendedor] ),\n        BLANK ()\n    )",
+            "formatString": "0.00%",
+            "displayFolder": "Vendedores"
+          },
+          {
+            "name": "Avaliações elegíveis",
+            "expression": "CALCULATE ( COUNT ( fact_orders[review_score] ), KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () ) )",
+            "formatString": "#,0",
+            "displayFolder": "Qualidade"
+          },
+          {
+            "name": "Notas baixas",
+            "expression": "CALCULATE ( [Avaliações elegíveis], KEEPFILTERS ( fact_orders[review_score] <= 2 ), KEEPFILTERS ( NOT ISBLANK ( fact_orders[review_score] ) ) )",
+            "formatString": "#,0",
+            "displayFolder": "Qualidade"
+          },
+          {
+            "name": "Proporção de notas baixas",
+            "expression": "DIVIDE ( [Notas baixas], [Avaliações elegíveis] )",
+            "formatString": "0.00%",
+            "displayFolder": "Experiência"
+          },
+          {
+            "name": "Entregues sem data válida",
+            "expression": "CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[order_status] = \"delivered\" ), KEEPFILTERS ( fact_orders[delivery_eligible] = FALSE () ) )",
+            "formatString": "#,0",
+            "displayFolder": "Qualidade"
+          },
+          {
+            "name": "Frete médio por pedido",
+            "expression": "DIVIDE ( [Frete registrado], [Pedidos com itens] )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Valores"
+          },
+          {
+            "name": "Pedidos com itens",
+            "expression": "CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[item_count] > 0 ) )",
+            "formatString": "#,0",
+            "displayFolder": "Qualidade"
+          },
+          {
+            "name": "Frete das categorias",
+            "expression": "DIVIDE ( SUM ( category_orders[freight_total_cents] ), 100 )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Categorias"
+          },
+          {
+            "name": "Produtos das categorias",
+            "expression": "DIVIDE ( SUM ( category_orders[product_total_cents] ), 100 )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Categorias"
+          },
+          {
+            "name": "Frete dos vendedores",
+            "expression": "DIVIDE ( SUM ( seller_orders[freight_total_cents] ), 100 )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Vendedores"
+          },
+          {
+            "name": "Produtos dos vendedores",
+            "expression": "DIVIDE ( SUM ( seller_orders[product_total_cents] ), 100 )",
+            "formatString": "\"R$\" #,0.00",
+            "displayFolder": "Vendedores"
+          }
+        ]
+      },
+      {
+        "name": "seller_orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "dataType": "string",
+            "sourceColumn": "order_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "purchase_date",
+            "dataType": "dateTime",
+            "sourceColumn": "purchase_date",
+            "summarizeBy": "none",
+            "formatString": "dd/MM/yyyy"
+          },
+          {
+            "name": "purchase_month",
+            "dataType": "string",
+            "sourceColumn": "purchase_month",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "customer_state",
+            "dataType": "string",
+            "sourceColumn": "customer_state",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivery_eligible",
+            "dataType": "boolean",
+            "sourceColumn": "delivery_eligible",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivered_late",
+            "dataType": "boolean",
+            "sourceColumn": "delivered_late",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivery_days",
+            "dataType": "double",
+            "sourceColumn": "delivery_days",
+            "summarizeBy": "none",
+            "formatString": "0.00"
+          },
+          {
+            "name": "review_score",
+            "dataType": "int64",
+            "sourceColumn": "review_score",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "product_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "product_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "freight_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "freight_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "item_count",
+            "dataType": "int64",
+            "sourceColumn": "item_count",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "seller_id",
+            "dataType": "string",
+            "sourceColumn": "seller_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "seller_state",
+            "dataType": "string",
+            "sourceColumn": "seller_state",
+            "summarizeBy": "none"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "seller_orders",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": "let\n    Source = fnOlistSource(\"seller_orders\")\nin\n    Source"
+            }
+          }
+        ]
+      },
+      {
+        "name": "category_orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "dataType": "string",
+            "sourceColumn": "order_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "purchase_date",
+            "dataType": "dateTime",
+            "sourceColumn": "purchase_date",
+            "summarizeBy": "none",
+            "formatString": "dd/MM/yyyy"
+          },
+          {
+            "name": "purchase_month",
+            "dataType": "string",
+            "sourceColumn": "purchase_month",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "customer_state",
+            "dataType": "string",
+            "sourceColumn": "customer_state",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivery_eligible",
+            "dataType": "boolean",
+            "sourceColumn": "delivery_eligible",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivered_late",
+            "dataType": "boolean",
+            "sourceColumn": "delivered_late",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "delivery_days",
+            "dataType": "double",
+            "sourceColumn": "delivery_days",
+            "summarizeBy": "none",
+            "formatString": "0.00"
+          },
+          {
+            "name": "review_score",
+            "dataType": "int64",
+            "sourceColumn": "review_score",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "product_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "product_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "freight_total_cents",
+            "dataType": "int64",
+            "sourceColumn": "freight_total_cents",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "item_count",
+            "dataType": "int64",
+            "sourceColumn": "item_count",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "category",
+            "dataType": "string",
+            "sourceColumn": "category",
+            "summarizeBy": "none"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "category_orders",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": "let\n    Source = fnOlistSource(\"category_orders\")\nin\n    Source"
+            }
+          }
+        ]
+      },
+      {
+        "name": "calendar",
+        "columns": [
+          {
+            "name": "date",
+            "dataType": "dateTime",
+            "sourceColumn": "date",
+            "summarizeBy": "none",
+            "isKey": true,
+            "formatString": "dd/MM/yyyy"
+          },
+          {
+            "name": "year",
+            "dataType": "int64",
+            "sourceColumn": "year",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "month",
+            "dataType": "int64",
+            "sourceColumn": "month",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "year_month",
+            "dataType": "string",
+            "sourceColumn": "year_month",
+            "summarizeBy": "none"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "calendar",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": "let\n    Source = fnOlistSource(\"calendar\")\nin\n    Source"
+            }
+          }
+        ],
+        "dataCategory": "Time"
+      }
+    ],
+    "relationships": [
+      {
+        "name": "calendar_orders",
+        "fromTable": "fact_orders",
+        "fromColumn": "purchase_date",
+        "toTable": "calendar",
+        "toColumn": "date",
+        "fromCardinality": "many",
+        "toCardinality": "one",
+        "crossFilteringBehavior": "oneDirection",
+        "joinOnDateBehavior": "datePartOnly"
+      },
+      {
+        "name": "orders_sellers",
+        "fromTable": "seller_orders",
+        "fromColumn": "order_id",
+        "toTable": "fact_orders",
+        "toColumn": "order_id",
+        "fromCardinality": "many",
+        "toCardinality": "one",
+        "crossFilteringBehavior": "oneDirection"
+      },
+      {
+        "name": "orders_categories",
+        "fromTable": "category_orders",
+        "fromColumn": "order_id",
+        "toTable": "fact_orders",
+        "toColumn": "order_id",
+        "fromCardinality": "many",
+        "toCardinality": "one",
+        "crossFilteringBehavior": "oneDirection"
+      }
+    ]
+  }
+}

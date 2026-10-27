@@ -1,0 +1,14 @@
+// Execute no Power BI depois de atualizar os dados. Sem filtros:
+// pedidos=99441; elegiveis=96470; atrasados=6534; taxa=0.06773090079817559.
+EVALUATE
+ROW (
+    "Pedidos", [Pedidos],
+    "Elegiveis", [Entregas elegíveis],
+    "Atrasados", [Entregas atrasadas],
+    "Taxa", [Taxa de atraso],
+    "Mediana", [Mediana de entrega],
+    "P90", [P90 de entrega],
+    "Frete", [Frete registrado],
+    "Produtos", [Valor dos produtos],
+    "Excluidos", [Entregues sem data válida]
+)
