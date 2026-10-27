@@ -38,7 +38,7 @@ jobs:
           cache: pip
       - name: Instalar
         run: pip install ".[postgres]"
-      - name: Conferir oito CSVs e 21 indicadores na base real
+      - name: Conferir oito CSVs e 19 indicadores na base real
         run: python scripts/validate_real_dataset.py --download --with-postgres
       - name: Resumir resultado
         if: success()
@@ -49,7 +49,7 @@ jobs:
           data = json.loads(Path("reports/real-validation/validation.json").read_text())
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
               summary.write("# Validação da base real\n\n")
-              summary.write("Oito CSVs conferidos por SHA-256; 21 indicadores SQL conferidos contra pandas e o snapshot publicado.\n\n")
+              summary.write("Oito CSVs conferidos por SHA-256; 19 indicadores SQL conferidos contra pandas e o snapshot publicado.\n\n")
               summary.write(f"Pedidos: {data['overview']['orders']}; elegíveis: {data['overview']['eligible_orders']}; atrasados: {data['overview']['late_orders']}.\n")
           PY
       - name: Guardar evidência agregada

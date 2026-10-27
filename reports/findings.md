@@ -61,7 +61,7 @@ Há 627 grupos de vendedores que atingem 30 entregas elegíveis. O CSV detalhado
 
 Minha prioridade seria cruzar destino e mês com prazo prometido e tempo observado, comparando grupos com composição semelhante. Isso ajudaria a separar promessa apertada de tempo efetivo elevado.
 
-Também montaria o dashboard nativo do Power BI e conferiria cada cartão com os totais deste relatório. As consultas e medidas estão preparadas, mas ainda não passaram por validação no Desktop.
+O dashboard nativo está implementado em PBIP, com cinco páginas e 30 medidas. Os esquemas e as referências passaram na validação automática. Ainda preciso abrir o projeto no Desktop, conferir os cartões e filtros e exportar o PBIX. A base real já passou na conferência independente em PostgreSQL.
 
 O relatório HTML autossuficiente está em [analysis.html](analysis.html). Os agregados publicados em [tables](tables/) permitem conferir os recortes. Os dados brutos e as tabelas com identificadores permanecem fora do repositório.
 

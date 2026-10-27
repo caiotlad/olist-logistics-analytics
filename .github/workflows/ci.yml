@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Instalar
-        run: pip install ".[postgres]"
+        run: pip install ".[postgres,validation]"
       - name: Testar regras e PostgreSQL real
         run: python -m unittest discover -s tests -v
       - name: Executar demonstração e comparar SQL com pandas

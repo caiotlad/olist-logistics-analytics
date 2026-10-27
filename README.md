@@ -4,7 +4,7 @@
 
 Criei este projeto para investigar onde se concentram os atrasos de entrega e como eles se relacionam com a experiência do cliente. Usei a base histórica da Olist para construir uma análise reproduzível, com regras explícitas para datas, valores e relacionamentos entre tabelas.
 
-A parte de dados e o relatório HTML estão implementados. A montagem e a validação do arquivo nativo do Power BI ficam como próxima etapa; deixei as consultas, medidas e o desenho do modelo preparados em [powerbi](powerbi/README.md).
+A parte de dados, o relatório HTML e o dashboard nativo em PBIP estão implementados. O projeto Power BI tem cinco páginas, filtros sincronizados e 30 medidas. A validação dos arquivos passou; a abertura e a renderização no Desktop ainda precisam ser conferidas. Veja [como abrir o dashboard](powerbi/README.md).
 
 ## O que encontrei
 
@@ -22,7 +22,7 @@ Escolhi o pedido como unidade principal. Itens e pagamentos são agregados separ
 
 Comparei as datas de calendário para definir atraso: uma entrega na noite do dia prometido continua no prazo. Tempo de entrega em dias usa a diferença entre os timestamps. Cancelados e pedidos sem datas suficientes ficam fora do indicador de atraso.
 
-Também mantive os valores em centavos inteiros e construí duas implementações dos indicadores gerais: pandas e SQL. A carga no PostgreSQL só é confirmada se os 21 indicadores conferirem. A divergência desfaz a transação.
+Também mantive os valores em centavos inteiros e construí duas implementações dos indicadores gerais: pandas e SQL. A carga no PostgreSQL só é confirmada se os 19 indicadores conferirem. A divergência desfaz a transação.
 
 As regras completas estão no [dicionário e método](docs/methodology.md).
 
@@ -94,9 +94,9 @@ Senhas com caracteres especiais precisam de codificação adequada na URL. O ser
 python -m unittest discover -s tests -v
 ```
 
-São 32 testes: 30 locais e dois de integração, ativados quando `DATABASE_URL` está definido. O GitHub Actions executa todos com PostgreSQL 17, roda a demonstração completa e constrói e executa a imagem Docker. Os casos incluem multiplicação de valores em joins, entrega no próprio dia prometido, avaliações empatadas, datas impossíveis, grupos pequenos, repetição de carga e rollback por divergência.
+São 39 testes: 37 locais e dois de integração, ativados quando `DATABASE_URL` está definido. O GitHub Actions executa todos com PostgreSQL 17, roda a demonstração completa e constrói e executa a imagem Docker. Os casos incluem multiplicação de valores em joins, entrega no próprio dia prometido, avaliações empatadas, datas impossíveis, grupos pequenos, repetição de carga e rollback por divergência.
 
-A análise completa do ZIP foi executada com pandas. A integração com PostgreSQL e a imagem Docker foram verificadas no CI com a base sintética; a carga completa da base real no PostgreSQL ainda precisa ser executada em um ambiente com o serviço disponível.
+A análise completa do ZIP passou com pandas e PostgreSQL 17. Os oito CSVs foram conferidos por SHA-256, e os 19 indicadores gerais coincidiram com o snapshot publicado. A [evidência da execução](reports/validation-postgres.json) identifica o commit e o workflow. O dashboard tem testes de esquema e referências; esses testes não executam DAX nem substituem a conferência no Desktop.
 
 ## Próximos passos
 
@@ -104,8 +104,9 @@ A análise completa do ZIP foi executada com pandas. A integração com PostgreS
 - [x] Implementar os marts e os indicadores em Python e SQL.
 - [x] Gerar relatório, gráficos e conclusões com denominadores explícitos.
 - [x] Automatizar os testes de integração e a execução Docker.
-- [ ] Montar e validar o dashboard nativo no Power BI.
-- [ ] Conferir o snapshot real completo no PostgreSQL e comparar o Power BI com os totais publicados.
+- [x] Montar o projeto nativo do dashboard e validar esquemas, campos e relacionamentos.
+- [x] Conferir o snapshot real completo no PostgreSQL.
+- [ ] Abrir no Power BI Desktop, conferir as medidas e os filtros e exportar o PBIX.
 
 ## Fonte e uso dos dados
 

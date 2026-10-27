@@ -1,97 +1,126 @@
-// Crie cada medida separadamente em fact_orders.
-// Os nomes das tabelas devem coincidir com o roteiro de montagem.
-// Medidas desta seção usam somente o contexto de fact_orders.
+// Referência extraída do modelo versionado. As medidas já existem no PBIP.
 
-Pedidos = COUNTROWS ( fact_orders )
+Pedidos =
+COUNTROWS ( fact_orders )
 
 Entregas elegíveis =
-    CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () ) )
+CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () ) )
 
 Entregas atrasadas =
-    CALCULATE (
+CALCULATE (
         [Entregas elegíveis],
         KEEPFILTERS ( fact_orders[delivered_late] = TRUE () )
     )
 
-Taxa de atraso = DIVIDE ( [Entregas atrasadas], [Entregas elegíveis] )
+Taxa de atraso =
+DIVIDE ( [Entregas atrasadas], [Entregas elegíveis] )
 
 Taxa de atraso - mínimo 30 =
-    IF ( [Entregas elegíveis] >= 30, [Taxa de atraso], BLANK () )
+IF ( [Entregas elegíveis] >= 30, [Taxa de atraso], BLANK () )
 
 Tempo médio de entrega =
-    CALCULATE (
+CALCULATE (
         AVERAGE ( fact_orders[delivery_days] ),
         KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )
     )
 
 Mediana de entrega =
-    CALCULATE (
+CALCULATE (
         MEDIAN ( fact_orders[delivery_days] ),
         KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )
     )
 
 P90 de entrega =
-    CALCULATE (
+CALCULATE (
         PERCENTILE.INC ( fact_orders[delivery_days], 0.9 ),
         KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )
     )
 
 Nota média elegível =
-    CALCULATE (
+CALCULATE (
         AVERAGE ( fact_orders[review_score] ),
         KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () )
     )
 
-Valor dos produtos = DIVIDE ( SUM ( fact_orders[product_total_cents] ), 100 )
+Valor dos produtos =
+DIVIDE ( SUM ( fact_orders[product_total_cents] ), 100 )
 
-Frete registrado = DIVIDE ( SUM ( fact_orders[freight_total_cents] ), 100 )
+Frete registrado =
+DIVIDE ( SUM ( fact_orders[freight_total_cents] ), 100 )
 
-Frete sobre produtos = DIVIDE ( [Frete registrado], [Valor dos produtos] )
+Frete sobre produtos =
+DIVIDE ( [Frete registrado], [Valor dos produtos] )
 
-// Medidas da página de categorias: não somar contagens entre categorias.
-// Use categoria da própria category_orders; filtros globais vindos de fact_orders
-// propagam-se pela relação 1:* descrita no guia.
-
-Pedidos com categoria = DISTINCTCOUNT ( category_orders[order_id] )
+Pedidos com categoria =
+DISTINCTCOUNT ( category_orders[order_id] )
 
 Elegíveis da categoria =
-    CALCULATE (
+CALCULATE (
         [Pedidos com categoria],
         KEEPFILTERS ( category_orders[delivery_eligible] = TRUE () )
     )
 
 Atrasados da categoria =
-    CALCULATE (
+CALCULATE (
         [Elegíveis da categoria],
         KEEPFILTERS ( category_orders[delivered_late] = TRUE () )
     )
 
 Taxa de atraso da categoria =
-    IF (
+IF (
         [Elegíveis da categoria] >= 30,
         DIVIDE ( [Atrasados da categoria], [Elegíveis da categoria] ),
         BLANK ()
     )
 
-// Página de vendedores: use os campos e medidas da própria seller_orders.
-
-Pedidos com vendedor = DISTINCTCOUNT ( seller_orders[order_id] )
+Pedidos com vendedor =
+DISTINCTCOUNT ( seller_orders[order_id] )
 
 Elegíveis do vendedor =
-    CALCULATE (
+CALCULATE (
         [Pedidos com vendedor],
         KEEPFILTERS ( seller_orders[delivery_eligible] = TRUE () )
     )
 
 Atrasados do vendedor =
-    CALCULATE (
+CALCULATE (
         [Elegíveis do vendedor],
         KEEPFILTERS ( seller_orders[delivered_late] = TRUE () )
     )
 
 Taxa de atraso do vendedor =
-    IF (
+IF (
         [Elegíveis do vendedor] >= 30,
         DIVIDE ( [Atrasados do vendedor], [Elegíveis do vendedor] ),
         BLANK ()
     )
+
+Avaliações elegíveis =
+CALCULATE ( COUNT ( fact_orders[review_score] ), KEEPFILTERS ( fact_orders[delivery_eligible] = TRUE () ) )
+
+Notas baixas =
+CALCULATE ( [Avaliações elegíveis], KEEPFILTERS ( fact_orders[review_score] <= 2 ), KEEPFILTERS ( NOT ISBLANK ( fact_orders[review_score] ) ) )
+
+Proporção de notas baixas =
+DIVIDE ( [Notas baixas], [Avaliações elegíveis] )
+
+Entregues sem data válida =
+CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[order_status] = "delivered" ), KEEPFILTERS ( fact_orders[delivery_eligible] = FALSE () ) )
+
+Frete médio por pedido =
+DIVIDE ( [Frete registrado], [Pedidos com itens] )
+
+Pedidos com itens =
+CALCULATE ( [Pedidos], KEEPFILTERS ( fact_orders[item_count] > 0 ) )
+
+Frete das categorias =
+DIVIDE ( SUM ( category_orders[freight_total_cents] ), 100 )
+
+Produtos das categorias =
+DIVIDE ( SUM ( category_orders[product_total_cents] ), 100 )
+
+Frete dos vendedores =
+DIVIDE ( SUM ( seller_orders[freight_total_cents] ), 100 )
+
+Produtos dos vendedores =
+DIVIDE ( SUM ( seller_orders[product_total_cents] ), 100 )

@@ -22,7 +22,8 @@ def validate(raw_dir, output_dir, with_postgres):
     expected_files = published["source"]["files"]
     for name, expected in expected_files.items():
         path = raw_dir / name
-        digest = hashlib.file_digest(path.open("rb"), "sha256").hexdigest()
+        with path.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
         if digest != expected:
             raise ValueError("O arquivo não corresponde ao snapshot publicado: " + name)
     dsn = os.environ.get("DATABASE_URL") if with_postgres else None
