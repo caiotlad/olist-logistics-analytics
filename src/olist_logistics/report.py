@@ -23,7 +23,7 @@ def _display(value, kind="number"):
     return f"{value:.2f}"
 
 
-def _save_chart(output, filename, title, labels, values, percentage=False, horizontal=False):
+def _save_chart(output, filename, title, labels, values, percentage=False, horizontal=False, max_value=None):
     fig, ax = plt.subplots(figsize=(10.5, 5.2), layout="constrained")
     fig.patch.set_facecolor("#f7f8fa")
     ax.set_facecolor("#f7f8fa")
@@ -45,6 +45,8 @@ def _save_chart(output, filename, title, labels, values, percentage=False, horiz
         ax.text(0.5, 0.5, "Dados insuficientes para este recorte", ha="center", va="center", transform=ax.transAxes)
         ax.set_xticks([])
         ax.set_yticks([])
+    if max_value is not None and not horizontal:
+        ax.set_ylim(0, max_value)
     ax.set_title(title, loc="left", fontsize=14, color="#172c42", pad=18)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
@@ -75,16 +77,16 @@ def write_report(output, summary, quality, source):
         selected["late_rate"].tolist(), percentage=True, horizontal=True,
     ))
     monthly = summary["by_month"]
-    monthly = monthly.loc[monthly["purchase_month"].ne("UNKNOWN")].sort_values("purchase_month")
+    monthly = monthly.loc[monthly["purchase_month"].ne("UNKNOWN") & monthly["meets_minimum"]].sort_values("purchase_month")
     charts.append(_save_chart(
-        output, "late_by_month.png", "Taxa de atraso por mês de compra",
+        output, "late_by_month.png", f"Taxa de atraso por mês · mínimo de {quality['minimum_group_orders']} entregas",
         monthly["purchase_month"].tolist(), monthly["late_rate"].tolist(), percentage=True,
     ))
     reviews = summary["by_review"]
     charts.append(_save_chart(
         output, "reviews_by_delivery.png", "Nota média da última avaliação válida por pedido",
         [f"{r.delivery_group} · n={r.reviewed_orders}" for r in reviews.itertuples()],
-        reviews["mean_review_score"].tolist(),
+        reviews["mean_review_score"].tolist(), max_value=5,
     ))
     charts.append(_save_chart(
         output, "orders_by_status.png", "Pedidos por situação registrada na base",

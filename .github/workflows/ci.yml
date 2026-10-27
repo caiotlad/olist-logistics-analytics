@@ -42,6 +42,8 @@ jobs:
         run: olist-logistics demo --with-postgres
       - name: Conferir pacote e imagem
         run: docker build -t olist-logistics:ci .
+      - name: Executar a imagem e validar o PostgreSQL
+        run: docker run --rm --network host -e DATABASE_URL olist-logistics:ci demo --with-postgres
       - name: Guardar relatório de demonstração
         if: always()
         uses: actions/upload-artifact@v4

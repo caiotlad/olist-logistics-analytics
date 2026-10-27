@@ -160,6 +160,11 @@ class MartTests(unittest.TestCase):
         self.assertIsNone(result["mean_delivery_days"])
         self.assertIsNone(result["p90_delivery_days"])
 
+    def test_months_with_tiny_samples_are_not_ranked(self):
+        summary = summarize(self.marts, min_orders=30)
+        self.assertFalse(bool(summary["by_month"].iloc[0]["meets_minimum"]))
+        self.assertEqual(summary["by_month"].iloc[0]["eligible_orders"], 4)
+
     def test_empty_reviews_remain_missing(self):
         self.frames["reviews"] = self.frames["reviews"].iloc[:0]
         normalized, _ = normalize_sources(self.frames)

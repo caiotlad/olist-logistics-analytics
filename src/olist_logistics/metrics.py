@@ -85,7 +85,7 @@ def summarize(marts, min_orders=30):
     return {
         "overview": overview(facts),
         "by_state": group_summary(facts, "customer_state", min_orders),
-        "by_month": group_summary(facts, "purchase_month", 1),
+        "by_month": group_summary(facts, "purchase_month", min_orders),
         "by_seller": group_summary(marts["seller_orders"], "seller_id", min_orders),
         "by_category": group_summary(marts["category_orders"], "category", min_orders),
         "by_review": review_summary(facts),

@@ -17,6 +17,7 @@ services:
   pipeline:
     build: .
     profiles: ["tools"]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-olist}:${POSTGRES_PASSWORD:?Defina a senha}@db:5432/${POSTGRES_DB:-olist}
     depends_on:
