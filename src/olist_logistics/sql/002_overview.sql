@@ -1,0 +1,21 @@
+SELECT COUNT(*)::bigint AS orders,
+       COUNT(*) FILTER (WHERE order_status = 'delivered')::bigint AS delivered_orders,
+       COUNT(*) FILTER (WHERE delivery_eligible)::bigint AS eligible_orders,
+       COUNT(*) FILTER (WHERE order_status = 'delivered' AND NOT delivery_eligible)::bigint AS excluded_delivered_orders,
+       COUNT(*) FILTER (WHERE delivered_late)::bigint AS late_orders,
+       (COUNT(*) FILTER (WHERE delivered_late))::double precision /
+           NULLIF(COUNT(*) FILTER (WHERE delivery_eligible), 0) AS late_rate,
+       AVG(delivery_days) FILTER (WHERE delivery_eligible) AS mean_delivery_days,
+       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY delivery_days) FILTER (WHERE delivery_eligible) AS median_delivery_days,
+       PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY delivery_days) FILTER (WHERE delivery_eligible) AS p90_delivery_days,
+       (AVG(delay_calendar_days) FILTER (WHERE delivered_late))::double precision AS mean_late_calendar_days,
+       SUM(product_total_cents)::bigint AS product_total_cents,
+       SUM(freight_total_cents)::bigint AS freight_total_cents,
+       SUM(freight_total_cents)::double precision / NULLIF(SUM(product_total_cents), 0) AS freight_to_products_ratio,
+       COUNT(*) FILTER (WHERE order_status = 'canceled')::bigint AS canceled_orders,
+       COUNT(*) FILTER (WHERE item_count = 0)::bigint AS orders_without_items,
+       COUNT(*) FILTER (WHERE payment_count = 0)::bigint AS orders_without_payments,
+       COUNT(*) FILTER (WHERE review_conflict)::bigint AS review_conflicts,
+       MIN(order_purchase_timestamp) AS purchase_start,
+       MAX(order_purchase_timestamp) AS purchase_end
+FROM olist_mart.fact_orders;
