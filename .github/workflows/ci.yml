@@ -1,0 +1,50 @@
+name: CI
+on:
+  push:
+    branches: ["main", "feature/**", "chore/**", "fix/**", "docs/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: olist_test
+          POSTGRES_USER: olist
+          POSTGRES_PASSWORD: test-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U olist -d olist_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://olist:test-password@localhost:5432/olist_test
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar
+        run: pip install ".[postgres]"
+      - name: Testar regras e PostgreSQL real
+        run: python -m unittest discover -s tests -v
+      - name: Executar demonstração e comparar SQL com pandas
+        run: olist-logistics demo --with-postgres
+      - name: Conferir pacote e imagem
+        run: docker build -t olist-logistics:ci .
+      - name: Guardar relatório de demonstração
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-demo-report
+          path: reports/demo/
