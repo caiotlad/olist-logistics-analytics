@@ -1,0 +1,21 @@
+{
+  "orders": 99441,
+  "delivered_orders": 96478,
+  "eligible_orders": 96470,
+  "excluded_delivered_orders": 8,
+  "late_orders": 6534,
+  "late_rate": 0.06773090079817559,
+  "mean_delivery_days": 12.558217098051975,
+  "median_delivery_days": 10.217476851851853,
+  "p90_delivery_days": 23.09637731481482,
+  "mean_late_calendar_days": 10.620140801958984,
+  "product_total_cents": 1359164370,
+  "freight_total_cents": 225190954,
+  "freight_to_products_ratio": 0.16568338529945426,
+  "canceled_orders": 625,
+  "orders_without_items": 775,
+  "orders_without_payments": 1,
+  "review_conflicts": 0,
+  "purchase_start": "2016-09-04T21:15:19",
+  "purchase_end": "2018-10-17T17:30:18"
+}

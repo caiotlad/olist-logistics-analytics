@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-olist}
+      POSTGRES_USER: ${POSTGRES_USER:-olist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copie .env.example para .env}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
+    volumes:
+      - olist-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  pipeline:
+    build: .
+    profiles: ["tools"]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-olist}:${POSTGRES_PASSWORD:?Defina a senha}@db:5432/${POSTGRES_DB:-olist}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - ./reports/generated:/app/reports/generated
+volumes:
+  olist-data:

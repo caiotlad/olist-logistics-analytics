@@ -1,0 +1,14 @@
+{
+  "name": "Olist Logistics",
+  "dataColors": [
+    "#176b87",
+    "#e98238",
+    "#243b53",
+    "#4ca89c",
+    "#8395a7",
+    "#c45151"
+  ],
+  "background": "#f5f7fa",
+  "foreground": "#182e47",
+  "tableAccent": "#176b87"
+}
