@@ -21,3 +21,5 @@ reports/demo/
 *.log
 powerbi/**/.pbi/
 powerbi/**/localSettings.json
+
+reports/real-validation/
