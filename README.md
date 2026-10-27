@@ -1,45 +1,114 @@
 # Olist Logistics
 
-Neste projeto, quero investigar o desempenho das entregas de um com�rcio eletr�nico e entender onde se concentram os atrasos. Meu interesse � ligar a an�lise a decis�es de opera��o: quais grupos precisam de aten��o e o que os dados permitem concluir.
+[![CI](https://github.com/caiotlad/olist-logistics-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/caiotlad/olist-logistics-analytics/actions/workflows/ci.yml)
 
-**Situa��o:** planejamento. A base ainda n�o foi baixada nem analisada.
+Criei este projeto para investigar onde se concentram os atrasos de entrega e como eles se relacionam com a experiência do cliente. Usei a base histórica da Olist para construir uma análise reproduzível, com regras explícitas para datas, valores e relacionamentos entre tabelas.
 
-## Fonte e perguntas
+A parte de dados e o relatório HTML estão implementados. A montagem e a validação do arquivo nativo do Power BI ficam como próxima etapa; deixei as consultas, medidas e o desenho do modelo preparados em [powerbi](powerbi/README.md).
 
-Vou usar o [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce). � uma base hist�rica; as conclus�es ser�o limitadas ao per�odo e � cobertura dos arquivos.
+## O que encontrei
 
-As perguntas iniciais s�o:
+Na base analisada há **99.441 pedidos**. Dos 96.478 marcados como entregues, 96.470 têm datas elegíveis para comparar prazo e entrega. Nesse grupo, **6.534 atrasaram: 6,77%**. Oito entregas ficaram fora do denominador por falta da data de entrega ao cliente.
 
-- Qual � a propor��o de pedidos entregues depois do prazo estimado?
-- Como o tempo de entrega varia entre regi�es, vendedores e categorias?
-- Qual � a rela��o entre atraso e avalia��o do pedido?
-- Como o frete se distribui em rela��o ao valor dos produtos?
+O prazo observado mediano foi de 10,22 dias e o percentil 90 foi de 23,10 dias. Pedidos atrasados tiveram nota média de 2,27, contra 4,29 entre os entregues no prazo, considerando a última avaliação válida de cada pedido. Essa associação não permite concluir que o atraso causou a nota.
 
-Antes de responder, vou conferir os campos dispon�veis, as datas, os registros ausentes e os relacionamentos entre as tabelas.
+Leia a [análise dos resultados](reports/findings.md), com recortes, quantidades e limitações. O [relatório HTML](reports/analysis.html) pode ser baixado e aberto no navegador.
 
-## Como pretendo organizar a an�lise
+![Taxa de atraso por estado, com pelo menos 30 entregas elegíveis](reports/figures/late_by_state.png)
 
-Vou usar Python e pandas para a inspe��o inicial, PostgreSQL para a base anal�tica e SQL para calcular os indicadores. O dashboard ser� feito no Power BI.
+## Decisões que orientaram a solução
 
-A unidade de an�lise principal ser� o pedido. Como um pedido pode ter v�rios itens e pagamentos, vou agregar essas tabelas antes de combin�-las. Isso � necess�rio para n�o inflar valores e contagens.
+Escolhi o pedido como unidade principal. Itens e pagamentos são agregados separadamente antes da junção, porque juntar as linhas diretamente multiplicaria valores em pedidos com vários itens e pagamentos.
 
-Vou documentar quem entra em cada indicador, como os cancelamentos ser�o tratados e o que fazer quando uma data estiver ausente. Compara��es por vendedor ou regi�o tamb�m precisar�o mostrar a quantidade de pedidos observados.
+Comparei as datas de calendário para definir atraso: uma entrega na noite do dia prometido continua no prazo. Tempo de entrega em dias usa a diferença entre os timestamps. Cancelados e pedidos sem datas suficientes ficam fora do indicador de atraso.
 
-## Etapas planejadas
+Também mantive os valores em centavos inteiros e construí duas implementações dos indicadores gerais: pandas e SQL. A carga no PostgreSQL só é confirmada se os 21 indicadores conferirem. A divergência desfaz a transação.
 
-1. Registrar a origem, a licen�a e o dicion�rio dos arquivos.
-2. Avaliar completude, duplicidades, chaves e coer�ncia das datas.
-3. Carregar os dados e construir as tabelas anal�ticas.
-4. Escrever as consultas dos indicadores e conferir os totais.
-5. Fazer a an�lise explorat�ria e montar o dashboard.
-6. Produzir um relat�rio curto com evid�ncias, limita��es e recomenda��es.
+As regras completas estão no [dicionário e método](docs/methodology.md).
 
-## Como vou considerar a primeira vers�o pronta
+## Executar sem banco
 
-O reposit�rio dever� permitir reproduzir a carga e as m�tricas. O dashboard ter� prazo, atraso, frete e avalia��es, com filtros compat�veis com os dados. O relat�rio dever� responder �s perguntas que a base permitir responder, incluindo resultados que contrariem minhas hip�teses.
+Requisitos: Python 3.11 ou superior. Os comandos abaixo partem da raiz deste repositório.
 
-N�o vou apresentar correla��o como causa. Tamb�m n�o vou usar esta base hist�rica para descrever a opera��o atual da Olist.
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e .
+python -m olist_logistics demo
+```
 
-## Entreg�veis previstos
+A demonstração usa dados sintéticos identificados como tal e gera `reports/demo/report.html`. Ela permite conhecer o fluxo sem baixar a base.
 
-Scripts de prepara��o, consultas SQL, dicion�rio dos indicadores, dashboard e relat�rio. Arquivos grandes ficar�o fora do Git; vou deixar instru��es para obter a base na origem e respeitar seus termos de uso.
+Para reproduzir a análise real, baixe o ZIP na [página da Olist no Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), aceite os termos da origem e coloque o arquivo na raiz do projeto:
+
+```powershell
+python -m olist_logistics import-zip archive.zip
+python -m olist_logistics run
+```
+
+A importação seleciona oito CSVs conhecidos, registra SHA-256 e preserva o ZIP original. O arquivo de geolocalização não é necessário neste escopo. O relatório fica em `reports/generated/report.html`; os CSVs analíticos e o diagnóstico de qualidade ficam na mesma pasta.
+
+O limite padrão das comparações é de 30 entregas elegíveis por grupo. Para alterá-lo, use `run --min-orders 50`. Os grupos menores continuam nos CSVs, com a coluna `meets_minimum`, e ficam fora dos gráficos comparativos.
+
+## Executar com PostgreSQL
+
+Com Docker Desktop em execução:
+
+```powershell
+Copy-Item .env.example .env
+# Ajuste POSTGRES_PASSWORD no .env antes de subir o serviço.
+docker compose up -d db
+docker compose --profile tools run --rm pipeline
+```
+
+Importe o ZIP antes de executar o pipeline. A carga substitui o snapshot das oito tabelas de origem em uma transação e cria as views em `olist_mart`. A porta local padrão é 5433. A conexão usa o usuário e a senha definidos no `.env`.
+
+No Linux, ajuste `LOCAL_UID` e `LOCAL_GID` para os resultados de `id -u` e `id -g`, para gravar os relatórios no volume com o usuário local.
+
+Também é possível executar o Python fora do contêiner:
+
+```powershell
+python -m pip install -e ".[postgres]"
+$env:DATABASE_URL = "postgresql://olist:SUA_SENHA@localhost:5433/olist"
+python -m olist_logistics run --with-postgres
+```
+
+Senhas com caracteres especiais precisam de codificação adequada na URL. O serviço PostgreSQL do Compose está limitado ao endereço local.
+
+## Organização
+
+| Caminho | Responsabilidade |
+| --- | --- |
+| `src/olist_logistics/quality.py` | Contratos, chaves, datas, valores e integridade referencial |
+| `src/olist_logistics/marts.py` | Pedido consolidado, pontes por vendedor/categoria e calendário |
+| `src/olist_logistics/sql/` | Views e cálculo independente dos indicadores |
+| `src/olist_logistics/warehouse.py` | Carga transacional e conferência SQL × pandas |
+| `src/olist_logistics/report.py` | Gráficos, tabelas e relatório HTML autossuficiente |
+| `reports/` | Snapshot agregado da análise real e resultados |
+| `powerbi/` | Consultas M, medidas DAX, tema e roteiro de montagem |
+| `tests/` | Casos de regra de negócio e integração com PostgreSQL |
+
+## Verificação
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+São 32 testes: 30 locais e dois de integração, ativados quando `DATABASE_URL` está definido. O GitHub Actions executa todos com PostgreSQL 17, roda a demonstração completa e constrói e executa a imagem Docker. Os casos incluem multiplicação de valores em joins, entrega no próprio dia prometido, avaliações empatadas, datas impossíveis, grupos pequenos, repetição de carga e rollback por divergência.
+
+A análise completa do ZIP foi executada com pandas. A integração com PostgreSQL e a imagem Docker foram verificadas no CI com a base sintética; a carga completa da base real no PostgreSQL ainda precisa ser executada em um ambiente com o serviço disponível.
+
+## Próximos passos
+
+- [x] Importar e identificar a base real, conferir qualidade e relacionamentos.
+- [x] Implementar os marts e os indicadores em Python e SQL.
+- [x] Gerar relatório, gráficos e conclusões com denominadores explícitos.
+- [x] Automatizar os testes de integração e a execução Docker.
+- [ ] Montar e validar o dashboard nativo no Power BI.
+- [ ] Conferir o snapshot real completo no PostgreSQL e comparar o Power BI com os totais publicados.
+
+## Fonte e uso dos dados
+
+Fonte: **Olist, Brazilian E-Commerce Public Dataset by Olist**, disponibilizada no Kaggle sob **CC BY-NC-SA 4.0**. A licença, os arquivos utilizados e a identificação do ZIP estão em [DATA_SOURCES.md](DATA_SOURCES.md).
+
+Os resultados descrevem somente esta base histórica de 2016–2018. Não representam a operação atual da Olist. Os arquivos brutos, ZIPs e tabelas detalhadas geradas ficam fora do Git.
