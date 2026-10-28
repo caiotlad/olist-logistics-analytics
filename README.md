@@ -50,6 +50,31 @@ streamlit run dashboard/app.py
 
 O Streamlit abre o painel no navegador. Para publicar uma versão demonstrativa, aponte o deploy para `dashboard/app.py` e mantenha os arquivos agregados de `reports/` no repositório.
 
+## Machine learning: risco de atraso
+
+O modelo estima a probabilidade de atraso após a aprovação do pedido. Ele usa validação cronológica, compara regressão logística e gradient boosting e seleciona o candidato pela PR-AUC na janela de validação. O teste final usa um período posterior e permanece fora da seleção do modelo e do limiar.
+
+```powershell
+python -m pip install -e ".[ml]"
+python -m olist_logistics train-delay-model
+```
+
+O comando lê os CSVs locais de `data/raw/` e gera `reports/ml/metrics.json`, `model_card.md`, curvas de precisão-recall e calibração, além da importância por permutação. O modelo serializado fica em `.work/ml/`, ignorado pelo Git; os dados brutos continuam fora do repositório. Leia [o método e as limitações do modelo](docs/machine-learning.md).
+
+O resultado registrado no snapshot mostra PR-AUC de **0,078** no teste temporal, acima da referência de **0,048**. No top 10% de maior risco, o lift foi **1,41×**. A taxa de atraso mudou de **8,63%** na validação para **4,81%** no teste; essa queda é apresentada como sinal de mudança temporal, não escondida como sucesso do modelo.
+
+Leia o [cartão do modelo](reports/ml/model_card.md) e os [detalhes da avaliação](reports/ml/metrics.json). A curva compara o teste com uma previsão sem habilidade:
+
+![Curva precisão-recall do modelo no período de teste](reports/ml/precision_recall.png)
+
+Para habilitar o simulador de risco dentro do Streamlit neste computador, instale as duas opções, treine o modelo e abra o dashboard:
+
+```powershell
+python -m pip install -e ".[dashboard,ml]"
+python -m olist_logistics train-delay-model
+streamlit run dashboard/app.py
+```
+
 Para reproduzir a análise real, baixe o ZIP na [página da Olist no Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), aceite os termos da origem e coloque o arquivo na raiz do projeto:
 
 ```powershell
@@ -95,8 +120,10 @@ Senhas com caracteres especiais precisam de codificação adequada na URL. O ser
 | `src/olist_logistics/sql/` | Views e cálculo independente dos indicadores |
 | `src/olist_logistics/warehouse.py` | Carga transacional e conferência SQL × pandas |
 | `src/olist_logistics/report.py` | Gráficos, tabelas e relatório HTML autossuficiente |
+| `src/olist_logistics/ml.py` | Atributos no momento da aprovação, modelos, seleção temporal e avaliação |
+| `dashboard/app.py` | Dashboard Streamlit com análise histórica e simulador local de risco |
+| `docs/machine-learning.md` | Alvo, prevenção de vazamento, validação e limitações do modelo |
 | `reports/` | Snapshot agregado da análise real e resultados |
-| `powerbi/` | Consultas M, medidas DAX, tema e roteiro de montagem |
 | `tests/` | Casos de regra de negócio e integração com PostgreSQL |
 
 ## Verificação
@@ -116,6 +143,7 @@ A análise completa do ZIP passou com pandas e PostgreSQL 17. Os oito CSVs foram
 - [x] Gerar relatório, gráficos e conclusões com denominadores explícitos.
 - [x] Automatizar os testes de integração e a execução Docker.
 - [x] Criar o dashboard web interativo para explorar os indicadores sem depender de uma ferramenta proprietária.
+- [x] Treinar e avaliar o modelo de risco de atraso com os dados Olist locais.
 - [x] Conferir o snapshot real completo no PostgreSQL.
 - [ ] Publicar uma demonstração do dashboard web para acesso pelo portfólio.
 

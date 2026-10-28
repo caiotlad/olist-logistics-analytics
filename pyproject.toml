@@ -13,6 +13,7 @@ dependencies = ["pandas>=2.2,<3", "matplotlib>=3.8,<4"]
 postgres = ["psycopg[binary]>=3.2,<4"]
 validation = ["jsonschema>=4.23,<5"]
 dashboard = ["streamlit>=1.55,<2"]
+ml = ["scikit-learn>=1.5,<2", "joblib>=1.4,<2"]
 
 [project.scripts]
 olist-logistics = "olist_logistics.cli:main"
