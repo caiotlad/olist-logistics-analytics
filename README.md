@@ -4,7 +4,7 @@
 
 Criei este projeto para investigar onde se concentram os atrasos de entrega e como eles se relacionam com a experiência do cliente. Usei a base histórica da Olist para construir uma análise reproduzível, com regras explícitas para datas, valores e relacionamentos entre tabelas.
 
-A parte de dados, o relatório HTML e o dashboard nativo em PBIP estão implementados. O projeto Power BI tem cinco páginas, filtros sincronizados e 30 medidas. A validação dos arquivos passou; a abertura e a renderização no Desktop ainda precisam ser conferidas. Veja [como abrir o dashboard](powerbi/README.md).
+A parte de dados, o relatório HTML e um dashboard interativo em Streamlit estão implementados. O painel usa os resumos analíticos versionados e permite explorar as taxas de atraso por mês, estado e categoria, além da associação com avaliações. Veja [como abrir o dashboard](#dashboard-interativo).
 
 ## O que encontrei
 
@@ -38,6 +38,17 @@ python -m olist_logistics demo
 ```
 
 A demonstração usa dados sintéticos identificados como tal e gera `reports/demo/report.html`. Ela permite conhecer o fluxo sem baixar a base.
+
+## Dashboard interativo
+
+O painel web usa Streamlit e os resumos analíticos do projeto. Ele não precisa do Power BI nem dos CSVs brutos.
+
+```powershell
+python -m pip install -e ".[dashboard]"
+streamlit run dashboard/app.py
+```
+
+O Streamlit abre o painel no navegador. Para publicar uma versão demonstrativa, aponte o deploy para `dashboard/app.py` e mantenha os arquivos agregados de `reports/` no repositório.
 
 Para reproduzir a análise real, baixe o ZIP na [página da Olist no Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), aceite os termos da origem e coloque o arquivo na raiz do projeto:
 
@@ -96,7 +107,7 @@ python -m unittest discover -s tests -v
 
 São 39 testes: 37 locais e dois de integração, ativados quando `DATABASE_URL` está definido. O GitHub Actions executa todos com PostgreSQL 17, roda a demonstração completa e constrói e executa a imagem Docker. Os casos incluem multiplicação de valores em joins, entrega no próprio dia prometido, avaliações empatadas, datas impossíveis, grupos pequenos, repetição de carga e rollback por divergência.
 
-A análise completa do ZIP passou com pandas e PostgreSQL 17. Os oito CSVs foram conferidos por SHA-256, e os 19 indicadores gerais coincidiram com o snapshot publicado. A [evidência da execução](reports/validation-postgres.json) identifica o commit e o workflow. O dashboard tem testes de esquema e referências; esses testes não executam DAX nem substituem a conferência no Desktop.
+A análise completa do ZIP passou com pandas e PostgreSQL 17. Os oito CSVs foram conferidos por SHA-256, e os 19 indicadores gerais coincidiram com o snapshot publicado. A [evidência da execução](reports/validation-postgres.json) identifica o commit e o workflow. O dashboard web lê os resumos agregados do repositório; os arquivos brutos não precisam ser publicados.
 
 ## Próximos passos
 
@@ -104,9 +115,9 @@ A análise completa do ZIP passou com pandas e PostgreSQL 17. Os oito CSVs foram
 - [x] Implementar os marts e os indicadores em Python e SQL.
 - [x] Gerar relatório, gráficos e conclusões com denominadores explícitos.
 - [x] Automatizar os testes de integração e a execução Docker.
-- [x] Montar o projeto nativo do dashboard e validar esquemas, campos e relacionamentos.
+- [x] Criar o dashboard web interativo para explorar os indicadores sem depender de uma ferramenta proprietária.
 - [x] Conferir o snapshot real completo no PostgreSQL.
-- [ ] Abrir no Power BI Desktop, conferir as medidas e os filtros e exportar o PBIX.
+- [ ] Publicar uma demonstração do dashboard web para acesso pelo portfólio.
 
 ## Fonte e uso dos dados
 
