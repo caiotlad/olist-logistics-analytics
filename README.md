@@ -4,7 +4,7 @@
 
 Criei este projeto para investigar onde se concentram os atrasos de entrega e como eles se relacionam com a experiência do cliente. Usei a base histórica da Olist para construir uma análise reproduzível, com regras explícitas para datas, valores e relacionamentos entre tabelas.
 
-A parte de dados e o relatório HTML estão implementados. A montagem e a validação do arquivo nativo do Power BI ficam como próxima etapa; deixei as consultas, medidas e o desenho do modelo preparados em [powerbi](powerbi/README.md).
+A parte de dados, o relatório HTML e um dashboard interativo em Streamlit estão implementados. O painel usa os resumos analíticos versionados e permite explorar as taxas de atraso por mês, estado e categoria, além da associação com avaliações. Veja [como abrir o dashboard](#dashboard-interativo).
 
 ## O que encontrei
 
@@ -22,7 +22,7 @@ Escolhi o pedido como unidade principal. Itens e pagamentos são agregados separ
 
 Comparei as datas de calendário para definir atraso: uma entrega na noite do dia prometido continua no prazo. Tempo de entrega em dias usa a diferença entre os timestamps. Cancelados e pedidos sem datas suficientes ficam fora do indicador de atraso.
 
-Também mantive os valores em centavos inteiros e construí duas implementações dos indicadores gerais: pandas e SQL. A carga no PostgreSQL só é confirmada se os 21 indicadores conferirem. A divergência desfaz a transação.
+Também mantive os valores em centavos inteiros e construí duas implementações dos indicadores gerais: pandas e SQL. A carga no PostgreSQL só é confirmada se os 19 indicadores conferirem. A divergência desfaz a transação.
 
 As regras completas estão no [dicionário e método](docs/methodology.md).
 
@@ -38,6 +38,42 @@ python -m olist_logistics demo
 ```
 
 A demonstração usa dados sintéticos identificados como tal e gera `reports/demo/report.html`. Ela permite conhecer o fluxo sem baixar a base.
+
+## Dashboard interativo
+
+O painel web usa Streamlit e os resumos analíticos do projeto. Ele não precisa do Power BI nem dos CSVs brutos.
+
+```powershell
+python -m pip install -e ".[dashboard]"
+streamlit run dashboard/app.py
+```
+
+O Streamlit abre o painel no navegador. Para publicar uma versão demonstrativa, aponte o deploy para `dashboard/app.py` e mantenha os arquivos agregados de `reports/` no repositório.
+
+## Machine learning: risco de atraso
+
+O modelo estima a probabilidade de atraso após a aprovação do pedido. Ele usa validação cronológica, compara regressão logística e gradient boosting e seleciona o candidato pela PR-AUC na janela de validação. O teste final usa um período posterior e permanece fora da seleção do modelo e do limiar.
+
+```powershell
+python -m pip install -e ".[ml]"
+python -m olist_logistics train-delay-model
+```
+
+O comando lê os CSVs locais de `data/raw/` e gera `reports/ml/metrics.json`, `model_card.md`, curvas de precisão-recall e calibração, além da importância por permutação. O modelo serializado fica em `.work/ml/`, ignorado pelo Git; os dados brutos continuam fora do repositório. Leia [o método e as limitações do modelo](docs/machine-learning.md).
+
+O resultado registrado no snapshot mostra PR-AUC de **0,078** no teste temporal, acima da referência de **0,048**. No top 10% de maior risco, o lift foi **1,41×**. A taxa de atraso mudou de **8,63%** na validação para **4,81%** no teste; essa queda é apresentada como sinal de mudança temporal, não escondida como sucesso do modelo.
+
+Leia o [cartão do modelo](reports/ml/model_card.md) e os [detalhes da avaliação](reports/ml/metrics.json). A curva compara o teste com uma previsão sem habilidade:
+
+![Curva precisão-recall do modelo no período de teste](reports/ml/precision_recall.png)
+
+Para habilitar o simulador de risco dentro do Streamlit neste computador, instale as duas opções, treine o modelo e abra o dashboard:
+
+```powershell
+python -m pip install -e ".[dashboard,ml]"
+python -m olist_logistics train-delay-model
+streamlit run dashboard/app.py
+```
 
 Para reproduzir a análise real, baixe o ZIP na [página da Olist no Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), aceite os termos da origem e coloque o arquivo na raiz do projeto:
 
@@ -84,8 +120,10 @@ Senhas com caracteres especiais precisam de codificação adequada na URL. O ser
 | `src/olist_logistics/sql/` | Views e cálculo independente dos indicadores |
 | `src/olist_logistics/warehouse.py` | Carga transacional e conferência SQL × pandas |
 | `src/olist_logistics/report.py` | Gráficos, tabelas e relatório HTML autossuficiente |
+| `src/olist_logistics/ml.py` | Atributos no momento da aprovação, modelos, seleção temporal e avaliação |
+| `dashboard/app.py` | Dashboard Streamlit com análise histórica e simulador local de risco |
+| `docs/machine-learning.md` | Alvo, prevenção de vazamento, validação e limitações do modelo |
 | `reports/` | Snapshot agregado da análise real e resultados |
-| `powerbi/` | Consultas M, medidas DAX, tema e roteiro de montagem |
 | `tests/` | Casos de regra de negócio e integração com PostgreSQL |
 
 ## Verificação
@@ -94,9 +132,9 @@ Senhas com caracteres especiais precisam de codificação adequada na URL. O ser
 python -m unittest discover -s tests -v
 ```
 
-São 32 testes: 30 locais e dois de integração, ativados quando `DATABASE_URL` está definido. O GitHub Actions executa todos com PostgreSQL 17, roda a demonstração completa e constrói e executa a imagem Docker. Os casos incluem multiplicação de valores em joins, entrega no próprio dia prometido, avaliações empatadas, datas impossíveis, grupos pequenos, repetição de carga e rollback por divergência.
+São 39 testes: 37 locais e dois de integração, ativados quando `DATABASE_URL` está definido. O GitHub Actions executa todos com PostgreSQL 17, roda a demonstração completa e constrói e executa a imagem Docker. Os casos incluem multiplicação de valores em joins, entrega no próprio dia prometido, avaliações empatadas, datas impossíveis, grupos pequenos, repetição de carga e rollback por divergência.
 
-A análise completa do ZIP foi executada com pandas. A integração com PostgreSQL e a imagem Docker foram verificadas no CI com a base sintética; a carga completa da base real no PostgreSQL ainda precisa ser executada em um ambiente com o serviço disponível.
+A análise completa do ZIP passou com pandas e PostgreSQL 17. Os oito CSVs foram conferidos por SHA-256, e os 19 indicadores gerais coincidiram com o snapshot publicado. A [evidência da execução](reports/validation-postgres.json) identifica o commit e o workflow. O dashboard web lê os resumos agregados do repositório; os arquivos brutos não precisam ser publicados.
 
 ## Próximos passos
 
@@ -104,8 +142,10 @@ A análise completa do ZIP foi executada com pandas. A integração com PostgreS
 - [x] Implementar os marts e os indicadores em Python e SQL.
 - [x] Gerar relatório, gráficos e conclusões com denominadores explícitos.
 - [x] Automatizar os testes de integração e a execução Docker.
-- [ ] Montar e validar o dashboard nativo no Power BI.
-- [ ] Conferir o snapshot real completo no PostgreSQL e comparar o Power BI com os totais publicados.
+- [x] Criar o dashboard web interativo para explorar os indicadores sem depender de uma ferramenta proprietária.
+- [x] Treinar e avaliar o modelo de risco de atraso com os dados Olist locais.
+- [x] Conferir o snapshot real completo no PostgreSQL.
+- [ ] Publicar uma demonstração do dashboard web para acesso pelo portfólio.
 
 ## Fonte e uso dos dados
 

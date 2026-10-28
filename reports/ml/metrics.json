@@ -1,0 +1,132 @@
+{
+  "project": "Olist Delivery Risk",
+  "target": "1 quando a data de entrega ao cliente é posterior à data estimada, comparando dias de calendário; 0 nos demais pedidos elegíveis.",
+  "prediction_time": "Após aprovação do pedido; somente atributos disponíveis nesse momento entram no modelo.",
+  "source_period": {
+    "purchase_start": "2016-09-15",
+    "purchase_end": "2018-08-29"
+  },
+  "cutoffs": {
+    "train_before": "2018-01-01",
+    "validation_from": "2018-01-01",
+    "validation_before": "2018-07-01",
+    "test_from": "2018-07-01"
+  },
+  "dataset": {
+    "source_orders": 99441,
+    "eligible_labeled_orders": 96470,
+    "excluded_delivered_orders": 8,
+    "late_orders": 6534,
+    "late_rate": 0.06773090079817559
+  },
+  "splits": {
+    "train": {
+      "orders": 43693,
+      "late_orders": 2456,
+      "late_rate": 0.05621037694825258
+    },
+    "validation": {
+      "orders": 40270,
+      "late_orders": 3477,
+      "late_rate": 0.08634219021604171
+    },
+    "test": {
+      "orders": 12507,
+      "late_orders": 601,
+      "late_rate": 0.04805309026944911
+    }
+  },
+  "model_selection": {
+    "criterion": "Maior average precision na validação temporal.",
+    "validation_average_precision": {
+      "logistic_regression": 0.18321079350903843,
+      "hist_gradient_boosting": 0.13944546476557718
+    },
+    "selected_model": "logistic_regression",
+    "validation_threshold_maximizing_f1": 0.07635248484197445
+  },
+  "temporal_shift": {
+    "validation_late_rate": 0.08634219021604171,
+    "test_late_rate": 0.04805309026944911,
+    "late_rate_change_percentage_points": -3.82890999465926,
+    "validation_average_precision": 0.18321079350903843,
+    "test_average_precision": 0.07842442079278608
+  },
+  "test": {
+    "selected_model": {
+      "average_precision": 0.07842442079278608,
+      "roc_auc": 0.6418096777502528,
+      "brier_score": 0.04559976562427157,
+      "threshold": 0.07635248484197445,
+      "precision_at_threshold": 0.06899641577060932,
+      "recall_at_threshold": 0.1281198003327787,
+      "f1_at_threshold": 0.0896913220733838,
+      "top_10_percent": {
+        "capacity_fraction": 0.1,
+        "orders_flagged": 1251,
+        "precision": 0.06794564348521183,
+        "recall": 0.14143094841930118,
+        "lift": 1.413970321247162
+      },
+      "prevalence": 0.04805309026944911
+    },
+    "prior_baseline": {
+      "average_precision": 0.04805309026944911,
+      "roc_auc": 0.5,
+      "brier_score": 0.04581053211096548,
+      "prevalence": 0.04805309026944911
+    },
+    "no_skill_average_precision": 0.04805309026944911,
+    "prior_baseline_validation_average_precision": 0.08634219021604171
+  },
+  "features": {
+    "categorical": [
+      "customer_state",
+      "dominant_seller_state",
+      "dominant_category",
+      "dominant_payment_type",
+      "purchase_month",
+      "purchase_weekday"
+    ],
+    "numeric": [
+      "purchase_hour",
+      "approval_wait_minutes",
+      "promise_lead_days",
+      "item_count",
+      "seller_count",
+      "category_count",
+      "seller_state_count",
+      "same_state_item_share",
+      "product_total_brl",
+      "freight_total_brl",
+      "mean_item_price_brl",
+      "mean_item_freight_brl",
+      "freight_to_products_ratio",
+      "payment_count",
+      "installments_max",
+      "installments_mean"
+    ],
+    "excluded_examples": [
+      "order_id, customer_id e seller_id",
+      "data de despacho e data de entrega reais",
+      "avaliação do cliente e demais resultados posteriores à aprovação"
+    ]
+  },
+  "quality_warning_count": 0,
+  "source_hashes": {
+    "orders": "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf",
+    "customers": "983a422239e1712ded753b3bf9ecf47dc73f144d306029dcfa99e70a226883d2",
+    "items": "0bc4d068c4fe38cbb01bd90e8746e3c613fe7b4baef75fab7b0e329701c3e279",
+    "payments": "4f713964f2815dbbaa40b9488268c55aac3627bfce5aa96cf58d1f3616de3cc0",
+    "reviews": "012b61c7593e34f51fa614efdf802b9c7056ce6aae5307ddb93236e7cfc797d7",
+    "products": "3e6569628a17fbc75fd206ee357b59e20364b9afa90f5b6cd5b4d624c58aa9cc",
+    "sellers": "1f643d2b950373b85735e7794b20986f528d7a000432e7c6f9bcbb44d0846a0e",
+    "categories": "a81f0d1f27b27e7293f761bc79e3ce8f348ee39c4b3ed3e49bde38f478586278"
+  },
+  "limitations": [
+    "A base contém pedidos históricos de 2016–2018 e não representa a operação atual da Olist.",
+    "O alvo é definido somente para pedidos entregues com datas coerentes; cancelamentos ficam fora.",
+    "O teste temporal mede generalização para uma janela posterior desta mesma base, não valida implantação atual.",
+    "O limiar baseado em F1 não estima impacto financeiro ou capacidade operacional."
+  ]
+}

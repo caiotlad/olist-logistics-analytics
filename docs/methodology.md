@@ -68,9 +68,9 @@ Pedidos sem itens e sem pagamento são contados separadamente. Não exijo que o 
 
 O PostgreSQL recebe um snapshot em uma única transação, protegido por advisory lock. As tabelas são truncadas e recarregadas; o histórico de cargas fica em `olist_meta.loads`. Repetir a carga não acrescenta cópias dos pedidos.
 
-As views SQL reimplementam as regras. Os 21 indicadores gerais são comparados aos resultados pandas: inteiros e centavos exigem igualdade, enquanto números fracionários usam tolerância de 1e-10. Qualquer divergência desfaz a carga inteira. Recortes detalhados não têm comparação automatizada completa entre as duas implementações.
+As views SQL reimplementam as regras. Os 19 indicadores gerais são comparados aos resultados pandas: inteiros e centavos exigem igualdade, enquanto números fracionários usam tolerância de 1e-10. Qualquer divergência desfaz a carga inteira. Recortes detalhados não têm comparação automatizada completa entre as duas implementações.
 
-O CI usa uma base sintética com casos de borda. A base real foi processada localmente em pandas; seu snapshot completo ainda deve ser conferido no PostgreSQL. O Power BI também depende de validação no Desktop.
+O CI usa uma base sintética com casos de borda. A base real foi conferida no PostgreSQL 17 em uma execução do GitHub Actions, identificada em reports/validation-postgres.json. O projeto Power BI passou na validação dos esquemas e das referências, mas ainda depende da conferência de renderização e DAX no Desktop.
 
 ## Limites de interpretação
 

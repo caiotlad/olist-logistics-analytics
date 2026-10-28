@@ -15,6 +15,10 @@ def main(argv=None):
     importer = commands.add_parser("import-zip", help="Importar os oito CSVs necessários de um ZIP.")
     importer.add_argument("archive", type=Path)
     importer.add_argument("--raw-dir", type=Path, default=Path("data/raw"))
+    trainer = commands.add_parser("train-delay-model", help="Treinar e avaliar o modelo de risco de atraso.")
+    trainer.add_argument("--raw-dir", type=Path, default=Path("data/raw"))
+    trainer.add_argument("--output-dir", type=Path, default=Path("reports/ml"))
+    trainer.add_argument("--model-path", type=Path, default=Path(".work/ml/delay-risk.joblib"))
     for name, help_text in (("run", "Analisar os CSVs importados."), ("demo", "Executar com dados sintéticos.")):
         command = commands.add_parser(name, help=help_text)
         command.add_argument("--raw-dir", type=Path, default=Path("data/demo" if name == "demo" else "data/raw"))
@@ -26,6 +30,12 @@ def main(argv=None):
         if args.command == "import-zip":
             result = import_zip(args.archive, args.raw_dir)
             print(json.dumps({"raw_dir": str(args.raw_dir), "archive_sha256": result["archive_sha256"]}, ensure_ascii=False))
+            return 0
+        if args.command == "train-delay-model":
+            from .ml import train_delay_model
+
+            result = train_delay_model(args.raw_dir, args.output_dir, args.model_path)
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
             return 0
         dsn = os.getenv("DATABASE_URL") if args.with_postgres else None
         if args.with_postgres and not dsn:

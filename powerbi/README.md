@@ -1,65 +1,93 @@
-# Preparação do Power BI
+# Dashboard Olist Logistics
 
-Quero que o dashboard use os mesmos marts e as mesmas regras do relatório. Esta pasta contém a função M, as medidas DAX e o tema. **Ainda não existe um arquivo .pbix montado e validado**; os arquivos abaixo são uma preparação para essa etapa, sem execução no Desktop.
+Implementei o relatório nativo em **PBIP/PBIR**, com modelo semântico em TMSL, 30 medidas e cinco páginas. Os arquivos permitem acompanhar cada mudança de filtro, consulta e visual no Git.
 
-## Obter os dados
+A base real já foi conferida no PostgreSQL. Os esquemas e as referências do projeto foram validados automaticamente. **A abertura, a renderização e a execução DAX no Power BI Desktop ainda precisam ser verificadas.** O ambiente de desenvolvimento não tinha o aplicativo, e o navegador bloqueou o download oficial. Por isso, ainda não trato o dashboard como validado nem disponibilizo um PBIX exportado.
 
-1. Importe o ZIP e execute a carga com PostgreSQL, seguindo o README da raiz.
-2. No Power BI Desktop, abra Transformar dados e crie uma consulta em branco chamada `fnOlistTable`.
-3. Cole o conteúdo de [fnOlistTable.m](fnOlistTable.m) no Editor Avançado.
-4. Crie quatro consultas usando as expressões abaixo e dê a cada uma o nome indicado.
-5. Informe as credenciais do PostgreSQL no conector. Use o modo de importação.
+## Abrir o projeto
 
-| Consulta | Expressão M |
+Depois de executar o pipeline da raiz para gerar os quatro CSVs:
+
+```powershell
+python scripts/prepare_powerbi.py
+```
+
+O comando cria `.work/powerbi-local/OlistLogistics.pbip` com o parâmetro DataFolder apontando para os CSVs deste checkout. Ele preserva os arquivos versionados e recusa sobrescrever uma cópia local já existente. Abra o PBIP no Power BI Desktop e selecione **Atualizar**.
+
+Para preparar em um caminho curto fora do OneDrive:
+
+```powershell
+python scripts/prepare_powerbi.py --output C:\workspace\olist-powerbi
+```
+
+Use uma pasta vazia. O projeto preparado usa o modo CSV e não precisa de credenciais de banco. Os dados detalhados continuam fora do Git; outra pessoa pode reproduzi-los baixando a base e executando o pipeline.
+
+O [PBIP versionado](OlistLogistics.pbip) aponta para o [relatório](OlistLogistics.Report/definition.pbir) e o [modelo](OlistLogistics.SemanticModel/model.bim). Para abrir a definição versionada diretamente, configure DataFolder antes de atualizar. Seu valor padrão é um exemplo, sem caminhos pessoais gravados no Git.
+
+## Páginas
+
+| Página | Conteúdo |
 | --- | --- |
-| fact_orders | `= fnOlistTable("localhost:5433", "olist", "fact_orders")` |
-| seller_orders | `= fnOlistTable("localhost:5433", "olist", "seller_orders")` |
-| category_orders | `= fnOlistTable("localhost:5433", "olist", "category_orders")` |
-| calendar | `= fnOlistTable("localhost:5433", "olist", "calendar")` |
+| Entregas | Pedidos, elegíveis, atrasados, taxa, mediana e P90; comparação por UF e série mensal |
+| Experiência e frete | Nota por situação da entrega, notas baixas, frete e razão frete/produtos por UF |
+| Categorias | Contagens distintas, taxas e valores dos itens por categoria |
+| Vendedores | Contagens distintas, taxas e valores dos itens por vendedor |
+| Método e limites | Denominadores, critérios de atraso, sobreposição dos grupos e atribuição da fonte |
 
-Ajuste servidor, porta e banco se mudar o Compose. Não coloque senha na consulta. A função consulta apenas as quatro views permitidas e aplica os tipos usados pelas medidas.
+Mês da compra, UF de destino e status ficam sincronizados nas quatro páginas analíticas. Os gráficos de atraso e as tabelas de grupos exigem 30 elegíveis no contexto filtrado. Os cartões usam o universo do recorte; as tabelas de grupos podem omitir linhas menores que o mínimo.
 
-## Relacionamentos
+Os cartões das páginas de categoria e vendedor contam pedidos distintos da ponte correspondente. A soma das linhas da tabela não representa pedidos únicos. As relações têm direção única para evitar que uma seleção em uma ponte produza efeitos inesperados na outra.
 
-Desative a criação automática de relações e configure somente estas:
+## Modelo
 
-| Origem | Destino | Cardinalidade | Filtro |
-| --- | --- | --- | --- |
-| calendar[date] | fact_orders[purchase_date] | 1 para muitos | Único, da calendar |
-| fact_orders[order_id] | seller_orders[order_id] | 1 para muitos | Único, de fact_orders |
-| fact_orders[order_id] | category_orders[order_id] | 1 para muitos | Único, de fact_orders |
-
-Marque calendar como tabela de datas. Não crie relações diretas adicionais do calendário para as pontes, nem relações entre as pontes: isso criaria caminhos concorrentes.
-
-Os filtros gerais de mês, UF e status devem vir de calendar ou fact_orders. Campos da ponte filtram apenas suas próprias medidas; não configure filtro bidirecional para fazer cartões gerais reagirem a vendedores ou categorias. Nas páginas desses recortes, use as medidas específicas de cada ponte e deixe esse comportamento explícito.
-
-## Medidas e páginas
-
-Crie as medidas de [Measures.dax](Measures.dax) uma por vez. O arquivo é uma referência para o editor de medidas, não um script DAX de consulta executável. Ajuste o separador de argumentos caso a configuração regional do Desktop exija.
-
-Formate taxas como porcentagem com duas casas, tempos como decimal e valores financeiros como reais. Importe [theme.json](theme.json) em Exibição > Temas.
-
-| Página | Visuais | Filtros e cuidados |
+| Origem do filtro | Destino | Cardinalidade |
 | --- | --- | --- |
-| Entregas | Cartões de pedidos, elegíveis, atrasados, taxa, mediana e P90; barras por UF; série mensal | Mês de compra e UF; mostrar quantidade elegível junto às taxas |
-| Experiência e frete | Nota média por delivered_late; valores de produtos e frete; proporção de frete | Filtrar delivery_eligible=true para comparar notas; frete inclui o universo de status selecionado |
-| Categorias | Tabela com categoria, elegíveis, atrasados e taxa específica da categoria | Ocultar taxa para menos de 30 elegíveis; contagens não aditivas |
-| Vendedores | Tabela com vendedor, elegíveis, atrasados e taxa específica do vendedor | Usar as medidas da ponte, sem atribuir causalidade ao vendedor |
+| calendar[date] | fact_orders[purchase_date] | 1 para muitos |
+| fact_orders[order_id] | seller_orders[order_id] | 1 para muitos |
+| fact_orders[order_id] | category_orders[order_id] | 1 para muitos |
 
-Use `Taxa de atraso - mínimo 30` nas comparações gerais por grupo. A medida simples permanece nos cartões. Se aplicar filtros, o limite de 30 é recalculado no contexto selecionado.
+O modelo tem consultas M e medidas DAX já incluídas em `model.bim`; não é necessário criá-las manualmente. [Measures.dax](Measures.dax) é uma cópia de referência para leitura. A função [fnOlistTable.m](fnOlistTable.m) permanece como exemplo auxiliar para consultar somente o PostgreSQL.
 
-## Conferência antes de publicar
+## Usar PostgreSQL
 
-Sem filtros, fact_orders deve ter 99.441 linhas e order_id sem duplicação. Os cartões devem mostrar 96.470 elegíveis, 6.534 atrasos, 6,7730900798% de atraso e mediana de 10,2174768519 dias.
+Faça a carga real com `--with-postgres`, conforme o README da raiz. Na cópia local do projeto, abra Transformar dados > Editar parâmetros e altere SourceMode para `PostgreSQL`. Configure PostgresServer (padrão `localhost:5433`) e PostgresDatabase (padrão `olist`).
 
-Confira também SP: 40.494 elegíveis e 1.820 atrasos; RJ: 12.350 e 1.495; AL: 397 e 85. As taxas devem bater com `reports/tables/by_state.csv`.
+Informe as credenciais pelo conector. Não grave senhas nos arquivos do projeto. As duas origens usam os mesmos marts, os mesmos nomes de colunas e as mesmas regras.
 
-A nota média por atraso deve ser 4,2903860559 para o grupo no prazo e 2,2704905187 para o atrasado. Nulos de nota devem permanecer ausentes, sem virar zero.
+## Validar antes de exportar
 
-Cheque que os valores monetários foram divididos por 100, os relacionamentos têm direção única e o filtro de mês usa a compra. Só depois desses checks o dashboard poderá ser tratado como validado.
+A validação dos arquivos pode ser repetida sem o Desktop:
 
-## Referências
+```powershell
+python -m pip install -e ".[validation]"
+python scripts/validate_powerbi.py
+```
 
-- [Conector PostgreSQL do Power Query](https://learn.microsoft.com/power-query/connectors/postgresql)
-- [PostgreSQL.Database](https://learn.microsoft.com/pt-br/powerquery-m/postgresql-database)
-- [CALCULATE](https://learn.microsoft.com/pt-br/dax/calculate-function-dax)
+O validador usa os esquemas oficiais da Microsoft, fixados em uma revisão do repositório de origem. Confere também papéis das consultas, referências dos campos, relações e limites do canvas. Isso não executa M ou DAX nem confirma a aparência dos visuais.
+
+No Desktop, atualize a cópia local e execute [DAXQueries/Conferencia.dax](OlistLogistics.SemanticModel/DAXQueries/Conferencia.dax) na exibição de consultas DAX. Sem filtros, o resultado deve ser:
+
+| Medida | Valor esperado |
+| --- | ---: |
+| Pedidos | 99.441 |
+| Entregas elegíveis | 96.470 |
+| Entregas atrasadas | 6.534 |
+| Taxa de atraso | 0,06773090079817559 |
+| Mediana de entrega | 10,217476851851853 |
+| P90 de entrega | 23,09637731481482 |
+| Frete registrado | R$ 2.251.909,54 |
+| Valor dos produtos | R$ 13.591.643,70 |
+| Entregues sem data válida | 8 |
+
+Confira também os filtros por UF: SP tem 40.494 elegíveis e 1.820 atrasos; RJ tem 12.350 e 1.495; AL tem 397 e 85. As notas médias são 4,2903860559 no prazo e 2,2704905187 com atraso.
+
+Teste os três filtros sincronizados, a ocultação de grupos pequenos, os estados sem elegíveis e a seleção de linhas nas pontes. Confira que nada corta nos cartões e que a escala de notas vai de 0 a 5.
+
+Depois dessa conferência, use Arquivo > Salvar como para exportar `OlistLogistics.pbix`. O PBIP permanece como fonte versionada.
+
+## Referências técnicas
+
+- [Projetos Power BI Desktop](https://learn.microsoft.com/power-bi/developer/projects/projects-overview)
+- [Relatórios PBIR](https://learn.microsoft.com/power-bi/developer/projects/projects-report)
+- [Modelo semântico do projeto](https://learn.microsoft.com/power-bi/developer/projects/projects-dataset)
+- [Esquemas oficiais](https://github.com/microsoft/json-schemas)

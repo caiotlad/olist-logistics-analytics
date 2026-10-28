@@ -1,0 +1,24 @@
+{
+  "name": "OlistLogistics",
+  "dataColors": [
+    "#176b87",
+    "#e98238",
+    "#243b53",
+    "#4ca89c",
+    "#8395a7",
+    "#c45151"
+  ],
+  "background": "#f5f7fa",
+  "foreground": "#182e47",
+  "tableAccent": "#176b87",
+  "textClasses": {
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "color": "#243b53"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "color": "#52667a"
+    }
+  }
+}

@@ -1,0 +1,3 @@
+candidate,validation_average_precision
+logistic_regression,0.18321079350903843
+hist_gradient_boosting,0.13944546476557718

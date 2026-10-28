@@ -1,0 +1,64 @@
+name: Real dataset
+on:
+  push:
+    branches: ["feature/powerbi-dashboard"]
+    paths:
+      - ".github/workflows/real-data.yml"
+      - "scripts/validate_real_dataset.py"
+      - "src/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: real-data-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate-real-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: olist_real
+          POSTGRES_USER: olist
+          POSTGRES_PASSWORD: test-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U olist -d olist_real"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://olist:test-only-password@localhost:5432/olist_real
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar
+        run: pip install ".[postgres]"
+      - name: Conferir oito CSVs e 19 indicadores na base real
+        run: python scripts/validate_real_dataset.py --download --with-postgres
+      - name: Resumir resultado
+        if: success()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.loads(Path("reports/real-validation/validation.json").read_text())
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("# Validação da base real\n\n")
+              summary.write("Oito CSVs conferidos por SHA-256; 19 indicadores SQL conferidos contra pandas e o snapshot publicado.\n\n")
+              summary.write(f"Pedidos: {data['overview']['orders']}; elegíveis: {data['overview']['eligible_orders']}; atrasados: {data['overview']['late_orders']}.\n")
+          PY
+      - name: Guardar evidência agregada
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-dataset-validation
+          path: |
+            reports/real-validation/validation.json
+            reports/real-validation/quality.json
+            reports/real-validation/overview.json
+            reports/real-validation/report.html
